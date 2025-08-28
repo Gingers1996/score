@@ -64,42 +64,39 @@ def main():
     
     # 默认cutoff值
     default_cutoffs = {
-        'Level2': 47.0,
-        'Level3': 53.0,
-        'Level4': 58.0,
-        'Level5': 63.0,
-        'Level6': 66.0,
-        'Level7': 70.0
+        'Level2': 47,
+        'Level3': 53,
+        'Level4': 58,
+        'Level5': 63,
+        'Level6': 66,
+        'Level7': 70
     }
     
-    # 等级设置表单
-    with st.sidebar.form("cutoff_form"):
-        st.caption("设置各等级的最低分数线（≥）")
-        level2 = st.number_input("Level2 ≥", 0.0, 100.0, default_cutoffs['Level2'], 0.1)
-        level3 = st.number_input("Level3 ≥", 0.0, 100.0, default_cutoffs['Level3'], 0.1)
-        level4 = st.number_input("Level4 ≥", 0.0, 100.0, default_cutoffs['Level4'], 0.1)
-        level5 = st.number_input("Level5 ≥", 0.0, 100.0, default_cutoffs['Level5'], 0.1)
-        level6 = st.number_input("Level6 ≥", 0.0, 100.0, default_cutoffs['Level6'], 0.1)
-        level7 = st.number_input("Level7 ≥", 0.0, 100.0, default_cutoffs['Level7'], 0.1)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            apply_btn = st.form_submit_button("应用设置")
-        with col2:
-            reset_btn = st.form_submit_button("恢复默认")
-    
-    # 处理按钮点击
-    if reset_btn:
-        st.sidebar.success("已恢复默认设置")
+    # 恢复默认按钮（在form外部）
+    if st.sidebar.button("🔄 恢复默认等级"):
+        st.sidebar.success("✅ 已恢复默认等级设置")
         current_cutoffs = default_cutoffs
-    elif apply_btn:
-        current_cutoffs = {
-            'Level2': level2, 'Level3': level3, 'Level4': level4,
-            'Level5': level5, 'Level6': level6, 'Level7': level7
-        }
-        st.sidebar.success("设置已应用")
+        st.rerun()
     else:
-        current_cutoffs = default_cutoffs
+        # 等级设置表单
+        with st.sidebar.form("cutoff_form"):
+            st.caption("设置各等级的最低分数线（≥）")
+            level2 = st.number_input("Level2 ≥", 0, 100, default_cutoffs['Level2'], 1)
+            level3 = st.number_input("Level3 ≥", 0, 100, default_cutoffs['Level3'], 1)
+            level4 = st.number_input("Level4 ≥", 0, 100, default_cutoffs['Level4'], 1)
+            level5 = st.number_input("Level5 ≥", 0, 100, default_cutoffs['Level5'], 1)
+            level6 = st.number_input("Level6 ≥", 0, 100, default_cutoffs['Level6'], 1)
+            level7 = st.number_input("Level7 ≥", 0, 100, default_cutoffs['Level7'], 1)
+            
+            if st.form_submit_button("✅ 应用设置"):
+                current_cutoffs = {
+                    'Level2': level2, 'Level3': level3, 'Level4': level4,
+                    'Level5': level5, 'Level6': level6, 'Level7': level7
+                }
+                st.sidebar.success("✅ 设置已应用")
+                st.rerun()
+            else:
+                current_cutoffs = default_cutoffs
     
     # 文件上传
     st.header("📁 文件上传")

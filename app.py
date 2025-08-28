@@ -61,34 +61,32 @@ def main():
     # 侧边栏：等级 cutoff 设置
     st.sidebar.header("🏆 等级 cutoff 设置")
     default_cutoffs = {
-        'Level2': 47.0,
-        'Level3': 53.0,
-        'Level4': 58.0,
-        'Level5': 63.0,
-        'Level6': 66.0,
-        'Level7': 70.0
+        'Level2': 47,
+        'Level3': 53,
+        'Level4': 58,
+        'Level5': 63,
+        'Level6': 66,
+        'Level7': 70
     }
     if 'cutoffs' not in st.session_state:
         st.session_state['cutoffs'] = default_cutoffs.copy()
     
+    # 恢复默认按钮（在form外部）
+    if st.sidebar.button("🔄 恢复默认等级"):
+        st.session_state['cutoffs'] = default_cutoffs.copy()
+        st.sidebar.success("✅ 已恢复默认等级设置")
+        st.rerun()
+    
     with st.sidebar.form("cutoff_form", clear_on_submit=False):
         st.caption("请设置各等级的最低分数线（≥）。Level2到Level7递增。")
-        level2 = st.number_input("Level2 ≥", 0.0, 100.0, float(st.session_state['cutoffs']['Level2']), 0.1)
-        level3 = st.number_input("Level3 ≥", 0.0, 100.0, float(st.session_state['cutoffs']['Level3']), 0.1)
-        level4 = st.number_input("Level4 ≥", 0.0, 100.0, float(st.session_state['cutoffs']['Level4']), 0.1)
-        level5 = st.number_input("Level5 ≥", 0.0, 100.0, float(st.session_state['cutoffs']['Level5']), 0.1)
-        level6 = st.number_input("Level6 ≥", 0.0, 100.0, float(st.session_state['cutoffs']['Level6']), 0.1)
-        level7 = st.number_input("Level7 ≥", 0.0, 100.0, float(st.session_state['cutoffs']['Level7']), 0.1)
-        col_a, col_b = st.columns(2)
-        with col_a:
-            apply_btn = st.form_submit_button("应用等级设置")
-        with col_b:
-            reset_btn = st.form_submit_button("恢复默认")
+        level2 = st.number_input("Level2 ≥", 0, 100, int(st.session_state['cutoffs']['Level2']), 1)
+        level3 = st.number_input("Level3 ≥", 0, 100, int(st.session_state['cutoffs']['Level3']), 1)
+        level4 = st.number_input("Level4 ≥", 0, 100, int(st.session_state['cutoffs']['Level4']), 1)
+        level5 = st.number_input("Level5 ≥", 0, 100, int(st.session_state['cutoffs']['Level5']), 1)
+        level6 = st.number_input("Level6 ≥", 0, 100, int(st.session_state['cutoffs']['Level6']), 1)
+        level7 = st.number_input("Level7 ≥", 0, 100, int(st.session_state['cutoffs']['Level7']), 1)
         
-        if reset_btn:
-            st.session_state['cutoffs'] = default_cutoffs.copy()
-            st.sidebar.success("已恢复默认等级设置")
-        elif apply_btn:
+        if st.form_submit_button("✅ 应用等级设置"):
             st.session_state['cutoffs'] = {
                 'Level2': level2,
                 'Level3': level3,
@@ -97,7 +95,8 @@ def main():
                 'Level6': level6,
                 'Level7': level7,
             }
-            st.sidebar.success("等级设置已应用")
+            st.sidebar.success("✅ 等级设置已应用")
+            st.rerun()
     
     current_cutoffs = st.session_state['cutoffs']
     
