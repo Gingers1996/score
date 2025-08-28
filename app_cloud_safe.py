@@ -195,235 +195,246 @@ def main():
         help="文件应包含以下列：姓名、学号、班级、甲部分数、乙部分数"
     )
     
+    # 检查是否有新文件上传
     if uploaded_file is not None:
-        try:
-            # 读取文件
-            if uploaded_file.name.endswith('.csv'):
-                df = pd.read_csv(uploaded_file)
-            else:
-                df = pd.read_excel(uploaded_file)
-            
-            # 处理None值，用0替代
-            df = df.fillna(0)
-            
-            st.success(f"✅ 文件上传成功！共读取 {len(df)} 条记录")
-            
-            # 检查必要列是否存在
-            required_columns = ['姓名', '学号', '班级', '甲部分数', '乙部分数']
-            missing_columns = [col for col in required_columns if col not in df.columns]
-            
-            if missing_columns:
-                st.error(f"❌ 文件缺少必要的列：{', '.join(missing_columns)}")
-                st.info("请确保文件包含以下列：姓名、学号、班级、甲部分数、乙部分数")
+        # 检查文件是否改变（通过文件名和大小）
+        file_key = f"{uploaded_file.name}_{uploaded_file.size}"
+        
+        if 'current_file_key' not in st.session_state or st.session_state['current_file_key'] != file_key:
+            # 新文件上传，读取并存储数据
+            try:
+                # 读取文件
+                if uploaded_file.name.endswith('.csv'):
+                    df = pd.read_csv(uploaded_file)
+                else:
+                    df = pd.read_excel(uploaded_file)
+                
+                # 处理None值，用0替代
+                df = df.fillna(0)
+                
+                # 检查必要列是否存在
+                required_columns = ['姓名', '学号', '班级', '甲部分数', '乙部分数']
+                missing_columns = [col for col in required_columns if col not in df.columns]
+                
+                if missing_columns:
+                    st.error(f"❌ 文件缺少必要的列：{', '.join(missing_columns)}")
+                    st.info("请确保文件包含以下列：姓名、学号、班级、甲部分数、乙部分数")
+                    return
+                
+                # 存储原始数据和处理后的数据到session state
+                st.session_state['original_df'] = df.copy()
+                st.session_state['processed_df'] = process_data(df)
+                st.session_state['current_file_key'] = file_key
+                
+                st.success(f"✅ 文件上传成功！共读取 {len(df)} 条记录")
+                
+            except Exception as e:
+                st.error(f"❌ 读取文件时出错：{str(e)}")
                 return
+    
+    # 如果有数据，显示结果
+    if 'processed_df' in st.session_state and st.session_state['processed_df'] is not None:
+        df = st.session_state['original_df']
+        processed_df = st.session_state['processed_df']
+        
+        # 显示原始数据
+        st.subheader("📋 原始数据")
+        st.dataframe(df, use_container_width=True)
+        
+        # 显示处理后的数据
+        st.subheader("📊 计算结果")
+        st.dataframe(processed_df, use_container_width=True)
+        
+        # 调试信息
+        st.info(f"📝 数据检查：总分范围 {processed_df['总分'].min()} - {processed_df['总分'].max()}")
+        
+        # 统计信息
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("总人数", len(processed_df))
+        with col2:
+            st.metric("平均分", f"{processed_df['总分'].mean():.1f}")
+        with col3:
+            st.metric("最高分", f"{processed_df['总分'].max()}")
+        with col4:
+            st.metric("最低分", f"{processed_df['总分'].min()}")
+        
+        # 等级划分（使用当前cutoffs）
+        final_df = assign_grades(processed_df, current_cutoffs)
+        
+        # 调试等级分配
+        level_counts = final_df['等级'].value_counts()
+        st.info(f"📊 等级分配：{dict(level_counts)}")
+        
+        # 显示最终结果（按等级涂色）
+        st.subheader("🎯 最终结果（含等级）")
+        
+        # 定义等级颜色映射
+        level_colors = {
+            'Level2': '#FFE6E6',  # 浅红色
+            'Level3': '#FFF2E6',  # 浅橙色
+            'Level4': '#FFFFE6',  # 浅黄色
+            'Level5': '#E6FFE6',  # 浅绿色
+            'Level6': '#E6F3FF',  # 浅蓝色
+            'Level7': '#F0E6FF',  # 浅紫色
+            '未定级': '#F5F5F5'   # 浅灰色
+        }
+        
+        # 创建样式函数
+        def highlight_levels(df):
+            styles = pd.DataFrame('', index=df.index, columns=df.columns)
+            for i in range(len(df)):
+                level = df.iloc[i]['等级']
+                color = level_colors.get(level, '#F5F5F5')
+                for j in range(len(df.columns)):
+                    styles.iloc[i, j] = f'background-color: {color}'
+            return styles
+        
+        # 应用样式并显示
+        styled_df = final_df.style.apply(highlight_levels, axis=None)
+        st.dataframe(styled_df, use_container_width=True)
+        
+        # 成绩分布统计
+        st.subheader("📊 成绩分布")
+        
+        # 等级分布
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**🏆 等级分布**")
+            grade_counts = final_df['等级'].value_counts().sort_index()
             
-            # 数据处理完成
+            # 创建等级分布表格
+            grade_data = []
+            for level, count in grade_counts.items():
+                percentage = (count / len(final_df)) * 100
+                
+                # 根据等级添加图标
+                if level == 'Level7':
+                    icon = "🥇"
+                elif level == 'Level6':
+                    icon = "🥈"
+                elif level == 'Level5':
+                    icon = "🥉"
+                elif level == 'Level4':
+                    icon = "🏅"
+                elif level == 'Level3':
+                    icon = "🎖️"
+                elif level == 'Level2':
+                    icon = "📊"
+                else:
+                    icon = "❓"
+                
+                grade_data.append({
+                    "等级": f"{icon} {level}",
+                    "人数": f"{count}人",
+                    "占比": f"{percentage:.1f}%"
+                })
             
-            # 显示原始数据
-            st.subheader("📋 原始数据")
-            st.dataframe(df, use_container_width=True)
+            # 显示等级分布表格
+            grade_df = pd.DataFrame(grade_data)
+            st.dataframe(
+                grade_df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "等级": st.column_config.TextColumn("等级", width="medium"),
+                    "人数": st.column_config.TextColumn("人数", width="small"),
+                    "占比": st.column_config.TextColumn("占比", width="small")
+                }
+            )
+        
+        with col2:
+            st.write("**🏫 班级平均分**")
+            class_avg = final_df.groupby('班级')['总分'].mean().sort_values(ascending=False)
             
-            # 处理数据
-            processed_df = process_data(df)
+            # 创建班级平均分表格
+            class_avg_data = []
+            for class_name, avg_score in class_avg.items():
+                # 根据平均分添加颜色和图标
+                if avg_score >= 80:
+                    icon = "🥇"
+                    color = "green"
+                elif avg_score >= 70:
+                    icon = "🥈"
+                    color = "blue"
+                elif avg_score >= 60:
+                    icon = "🥉"
+                    color = "orange"
+                else:
+                    icon = "📊"
+                    color = "red"
+                
+                class_avg_data.append({
+                    "班级": f"{icon} {class_name}",
+                    "平均分": f"{avg_score:.1f}分"
+                })
             
-            # 显示处理后的数据
-            st.subheader("📊 计算结果")
-            st.dataframe(processed_df, use_container_width=True)
+            # 显示班级平均分表格
+            class_avg_df = pd.DataFrame(class_avg_data)
+            st.dataframe(
+                class_avg_df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "班级": st.column_config.TextColumn("班级", width="medium"),
+                    "平均分": st.column_config.TextColumn("平均分", width="small")
+                }
+            )
+        
+        # 移除分数区间统计
+        
+        # 下载结果
+        st.subheader("💾 下载结果")
+        
+        # 创建Excel文件（带颜色）
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            final_df.to_excel(writer, sheet_name='计算结果', index=False)
             
-            # 调试信息
-            st.info(f"📝 数据检查：总分范围 {processed_df['总分'].min()} - {processed_df['总分'].max()}")
+            # 获取workbook和worksheet对象
+            workbook = writer.book
+            worksheet = writer.sheets['计算结果']
             
-            # 统计信息
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("总人数", len(processed_df))
-            with col2:
-                st.metric("平均分", f"{processed_df['总分'].mean():.1f}")
-            with col3:
-                st.metric("最高分", f"{processed_df['总分'].max()}")
-            with col4:
-                st.metric("最低分", f"{processed_df['总分'].min()}")
-            
-            # 等级划分
-            final_df = assign_grades(processed_df, current_cutoffs)
-            
-            # 调试等级分配
-            level_counts = final_df['等级'].value_counts()
-            st.info(f"📊 等级分配：{dict(level_counts)}")
-            
-            # 显示最终结果（按等级涂色）
-            st.subheader("🎯 最终结果（含等级）")
-            
-            # 定义等级颜色映射
-            level_colors = {
-                'Level2': '#FFE6E6',  # 浅红色
-                'Level3': '#FFF2E6',  # 浅橙色
-                'Level4': '#FFFFE6',  # 浅黄色
-                'Level5': '#E6FFE6',  # 浅绿色
-                'Level6': '#E6F3FF',  # 浅蓝色
-                'Level7': '#F0E6FF',  # 浅紫色
-                '未定级': '#F5F5F5'   # 浅灰色
+            # 定义等级颜色映射（openpyxl格式）
+            from openpyxl.styles import PatternFill
+            level_fills = {
+                'Level2': PatternFill(start_color='FFE6E6', end_color='FFE6E6', fill_type='solid'),
+                'Level3': PatternFill(start_color='FFF2E6', end_color='FFF2E6', fill_type='solid'),
+                'Level4': PatternFill(start_color='FFFFE6', end_color='FFFFE6', fill_type='solid'),
+                'Level5': PatternFill(start_color='E6FFE6', end_color='E6FFE6', fill_type='solid'),
+                'Level6': PatternFill(start_color='E6F3FF', end_color='E6F3FF', fill_type='solid'),
+                'Level7': PatternFill(start_color='F0E6FF', end_color='F0E6FF', fill_type='solid'),
+                '未定级': PatternFill(start_color='F5F5F5', end_color='F5F5F5', fill_type='solid')
             }
             
-            # 创建样式函数
-            def highlight_levels(df):
-                styles = pd.DataFrame('', index=df.index, columns=df.columns)
-                for i in range(len(df)):
-                    level = df.iloc[i]['等级']
-                    color = level_colors.get(level, '#F5F5F5')
-                    for j in range(len(df.columns)):
-                        styles.iloc[i, j] = f'background-color: {color}'
-                return styles
+            # 应用颜色到等级列
+            level_col_index = final_df.columns.get_loc('等级') + 1  # Excel列从1开始
+            for row_idx, level in enumerate(final_df['等级'], start=2):  # Excel行从2开始（跳过标题）
+                if level in level_fills:
+                    for col_idx in range(1, len(final_df.columns) + 1):
+                        cell = worksheet.cell(row=row_idx, column=col_idx)
+                        cell.fill = level_fills[level]
             
-            # 应用样式并显示
-            styled_df = final_df.style.apply(highlight_levels, axis=None)
-            st.dataframe(styled_df, use_container_width=True)
-            
-            # 成绩分布统计
-            st.subheader("📊 成绩分布")
-            
-            # 等级分布
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write("**🏆 等级分布**")
-                grade_counts = final_df['等级'].value_counts().sort_index()
-                
-                # 创建等级分布表格
-                grade_data = []
-                for level, count in grade_counts.items():
-                    percentage = (count / len(final_df)) * 100
-                    
-                    # 根据等级添加图标
-                    if level == 'Level7':
-                        icon = "🥇"
-                    elif level == 'Level6':
-                        icon = "🥈"
-                    elif level == 'Level5':
-                        icon = "🥉"
-                    elif level == 'Level4':
-                        icon = "🏅"
-                    elif level == 'Level3':
-                        icon = "🎖️"
-                    elif level == 'Level2':
-                        icon = "📊"
-                    else:
-                        icon = "❓"
-                    
-                    grade_data.append({
-                        "等级": f"{icon} {level}",
-                        "人数": f"{count}人",
-                        "占比": f"{percentage:.1f}%"
-                    })
-                
-                # 显示等级分布表格
-                grade_df = pd.DataFrame(grade_data)
-                st.dataframe(
-                    grade_df,
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "等级": st.column_config.TextColumn("等级", width="medium"),
-                        "人数": st.column_config.TextColumn("人数", width="small"),
-                        "占比": st.column_config.TextColumn("占比", width="small")
-                    }
+            # 设置列宽
+            for col_idx, col_name in enumerate(final_df.columns, start=1):
+                max_len = max(
+                    final_df[col_name].astype(str).apply(len).max(),
+                    len(col_name)
                 )
-            
-            with col2:
-                st.write("**🏫 班级平均分**")
-                class_avg = final_df.groupby('班级')['总分'].mean().sort_values(ascending=False)
-                
-                # 创建班级平均分表格
-                class_avg_data = []
-                for class_name, avg_score in class_avg.items():
-                    # 根据平均分添加颜色和图标
-                    if avg_score >= 80:
-                        icon = "🥇"
-                        color = "green"
-                    elif avg_score >= 70:
-                        icon = "🥈"
-                        color = "blue"
-                    elif avg_score >= 60:
-                        icon = "🥉"
-                        color = "orange"
-                    else:
-                        icon = "📊"
-                        color = "red"
-                    
-                    class_avg_data.append({
-                        "班级": f"{icon} {class_name}",
-                        "平均分": f"{avg_score:.1f}分"
-                    })
-                
-                # 显示班级平均分表格
-                class_avg_df = pd.DataFrame(class_avg_data)
-                st.dataframe(
-                    class_avg_df,
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "班级": st.column_config.TextColumn("班级", width="medium"),
-                        "平均分": st.column_config.TextColumn("平均分", width="small")
-                    }
-                )
-            
-            # 移除分数区间统计
-            
-            # 下载结果
-            st.subheader("💾 下载结果")
-            
-            # 创建Excel文件（带颜色）
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                final_df.to_excel(writer, sheet_name='计算结果', index=False)
-                
-                # 获取workbook和worksheet对象
-                workbook = writer.book
-                worksheet = writer.sheets['计算结果']
-                
-                # 定义等级颜色映射（openpyxl格式）
-                from openpyxl.styles import PatternFill
-                level_fills = {
-                    'Level2': PatternFill(start_color='FFE6E6', end_color='FFE6E6', fill_type='solid'),
-                    'Level3': PatternFill(start_color='FFF2E6', end_color='FFF2E6', fill_type='solid'),
-                    'Level4': PatternFill(start_color='FFFFE6', end_color='FFFFE6', fill_type='solid'),
-                    'Level5': PatternFill(start_color='E6FFE6', end_color='E6FFE6', fill_type='solid'),
-                    'Level6': PatternFill(start_color='E6F3FF', end_color='E6F3FF', fill_type='solid'),
-                    'Level7': PatternFill(start_color='F0E6FF', end_color='F0E6FF', fill_type='solid'),
-                    '未定级': PatternFill(start_color='F5F5F5', end_color='F5F5F5', fill_type='solid')
-                }
-                
-                # 应用颜色到等级列
-                level_col_index = final_df.columns.get_loc('等级') + 1  # Excel列从1开始
-                for row_idx, level in enumerate(final_df['等级'], start=2):  # Excel行从2开始（跳过标题）
-                    if level in level_fills:
-                        for col_idx in range(1, len(final_df.columns) + 1):
-                            cell = worksheet.cell(row=row_idx, column=col_idx)
-                            cell.fill = level_fills[level]
-                
-                # 设置列宽
-                for col_idx, col_name in enumerate(final_df.columns, start=1):
-                    max_len = max(
-                        final_df[col_name].astype(str).apply(len).max(),
-                        len(col_name)
-                    )
-                    worksheet.column_dimensions[chr(64 + col_idx)].width = max_len + 2
-            
-            output.seek(0)
-            
-            # 生成文件名
-            timestamp = int(time.time())
-            filename = f"成绩计算结果_{timestamp}.xlsx"
-            
-            st.download_button(
-                label="📥 下载Excel文件",
-                data=output.getvalue(),
-                file_name=filename,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-            
-        except Exception as e:
-            st.error(f"❌ 处理文件时出错：{str(e)}")
-            st.info("请检查文件格式是否正确，确保包含必要的列")
+                worksheet.column_dimensions[chr(64 + col_idx)].width = max_len + 2
+        
+        output.seek(0)
+        
+        # 生成文件名
+        timestamp = int(time.time())
+        filename = f"成绩计算结果_{timestamp}.xlsx"
+        
+        st.download_button(
+            label="📥 下载Excel文件",
+            data=output.getvalue(),
+            file_name=filename,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
     
     else:
         st.info("👆 请上传包含学生成绩的Excel或CSV文件")
