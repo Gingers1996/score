@@ -6,21 +6,7 @@ import hashlib
 import time
 import re
 
-def anonymize_data(df: pd.DataFrame) -> pd.DataFrame:
-    """数据匿名化处理"""
-    anonymized_df = df.copy()
-    
-    # 生成匿名ID
-    if '学号' in anonymized_df.columns:
-        anonymized_df['匿名ID'] = [f"ID_{i+1:04d}" for i in range(len(anonymized_df))]
-    
-    # 可选：匿名化姓名（保留前两位字符）
-    if '姓名' in anonymized_df.columns:
-        anonymized_df['姓名'] = anonymized_df['姓名'].apply(
-            lambda x: x[:2] + '*' * (len(str(x)) - 2) if len(str(x)) > 2 else x
-        )
-    
-    return anonymized_df
+# 移除匿名化功能
 
 def calculate_total_score(row):
     """计算总分：总分=(乙部/103*0.7)*100+(甲部/50*0.3)*100"""
@@ -91,31 +77,27 @@ def validate_cutoff_input(value: str) -> Optional[int]:
 
 def main():
     st.set_page_config(
-        page_title="学生成绩计算系统 - 云端安全版",
-        page_icon="☁️",
+        page_title="学生成绩计算系统",
+        page_icon="📊",
         layout="wide"
     )
     
-    # 隐私保护声明
-    st.sidebar.markdown("## 🔒 隐私保护")
+    # 应用说明
+    st.sidebar.markdown("## 📊 应用说明")
     st.sidebar.info("""
-    **云端安全承诺：**
-    - 数据会进行匿名化处理
-    - 敏感信息会被保护
-    - 建议使用化名数据
-    - 定期清理服务器数据
+    **功能特点：**
+    - 自动计算学生成绩总分
+    - 智能排名和等级评定
+    - 支持Excel和CSV文件
+    - 结果导出带颜色标记
     """)
     
-    st.title("☁️ 学生成绩计算系统 - 云端安全版")
+    st.title("📊 学生成绩计算系统")
     st.markdown("---")
     
-    # 数据匿名化选项
-    st.sidebar.header("🔐 数据保护设置")
-    anonymize_option = st.sidebar.checkbox(
-        "启用数据匿名化", 
-        value=True,
-        help="启用后将自动匿名化姓名和学号"
-    )
+    # 应用设置
+    st.sidebar.header("⚙️ 应用设置")
+    st.sidebar.info("上传Excel或CSV文件，系统将自动计算成绩和等级")
     
     # 侧边栏：等级 cutoff 设置
     st.sidebar.header("🏆 等级 cutoff 设置")
@@ -207,10 +189,6 @@ def main():
     # 文件上传区域
     st.header("📁 文件上传")
     
-    # 安全提醒
-    if anonymize_option:
-        st.info("🔒 已启用数据匿名化，敏感信息将被保护")
-    
     uploaded_file = st.file_uploader(
         "请上传Excel或CSV文件",
         type=['xlsx', 'xls', 'csv'],
@@ -228,13 +206,7 @@ def main():
             # 处理None值，用0替代
             df = df.fillna(0)
             
-            # 数据隐私保护：生成文件哈希用于日志
-            file_content = uploaded_file.read()
-            file_hash = hashlib.md5(file_content).hexdigest()[:8]
-            uploaded_file.seek(0)  # 重置文件指针
-            
             st.success(f"✅ 文件上传成功！共读取 {len(df)} 条记录")
-            st.info(f"🔒 文件ID: {file_hash} (仅用于日志，不包含个人信息)")
             
             # 检查必要列是否存在
             required_columns = ['姓名', '学号', '班级', '甲部分数', '乙部分数']
@@ -245,10 +217,7 @@ def main():
                 st.info("请确保文件包含以下列：姓名、学号、班级、甲部分数、乙部分数")
                 return
             
-            # 数据匿名化处理
-            if anonymize_option:
-                df = anonymize_data(df)
-                st.info("🔐 数据已进行匿名化处理")
+            # 数据处理完成
             
             # 显示原始数据
             st.subheader("📋 原始数据")
@@ -349,7 +318,7 @@ def main():
                 
                 # 获取workbook和worksheet对象
                 workbook = writer.book
-                worksheet = writer['计算结果']
+                worksheet = writer.sheets['计算结果']
                 
                 # 定义等级颜色映射（openpyxl格式）
                 from openpyxl.styles import PatternFill
@@ -381,25 +350,16 @@ def main():
             
             output.seek(0)
             
-            # 生成安全的文件名
+            # 生成文件名
             timestamp = int(time.time())
-            safe_filename = f"成绩计算结果_{file_hash}_{timestamp}.xlsx"
+            filename = f"成绩计算结果_{timestamp}.xlsx"
             
             st.download_button(
                 label="📥 下载Excel文件",
                 data=output.getvalue(),
-                file_name=safe_filename,
+                file_name=filename,
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-            
-            # 云端安全提醒
-            st.warning("""
-            ☁️ **云端安全提醒：**
-            - 数据已进行匿名化处理
-            - 建议使用化名数据
-            - 定期清理敏感文件
-            - 不要上传包含真实身份信息的数据
-            """)
             
         except Exception as e:
             st.error(f"❌ 处理文件时出错：{str(e)}")
@@ -427,14 +387,15 @@ def main():
         - 您可以根据需要设置各等级的cutoff分数
         """)
         
-        # 云端使用建议
-        st.subheader("☁️ 云端使用建议")
+        # 使用说明
+        st.subheader("📝 使用说明")
         st.markdown("""
-        **为了保护隐私，建议：**
-        1. **使用化名数据**：将真实姓名替换为化名
-        2. **简化学号**：使用简单的编号替代真实学号
-        3. **启用匿名化**：系统会自动保护敏感信息
-        4. **及时清理**：使用完毕后及时删除文件
+        **使用步骤：**
+        1. **准备数据**：确保Excel或CSV文件包含必要列
+        2. **上传文件**：选择包含学生成绩的文件
+        3. **设置等级**：在侧边栏设置等级分数线
+        4. **查看结果**：系统自动计算并显示结果
+        5. **下载文件**：导出带颜色标记的Excel文件
         """)
 
 if __name__ == "__main__":
