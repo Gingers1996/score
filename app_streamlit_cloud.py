@@ -81,20 +81,37 @@ def main():
         # 等级设置表单
         with st.sidebar.form("cutoff_form"):
             st.caption("设置各等级的最低分数线（≥）")
-            level2 = st.number_input("Level2 ≥", 0, 100, default_cutoffs['Level2'], 1)
-            level3 = st.number_input("Level3 ≥", 0, 100, default_cutoffs['Level3'], 1)
-            level4 = st.number_input("Level4 ≥", 0, 100, default_cutoffs['Level4'], 1)
-            level5 = st.number_input("Level5 ≥", 0, 100, default_cutoffs['Level5'], 1)
-            level6 = st.number_input("Level6 ≥", 0, 100, default_cutoffs['Level6'], 1)
-            level7 = st.number_input("Level7 ≥", 0, 100, default_cutoffs['Level7'], 1)
+            level2 = st.text_input("Level2 ≥", str(default_cutoffs['Level2']), help="请输入0-100的整数")
+            level3 = st.text_input("Level3 ≥", str(default_cutoffs['Level3']), help="请输入0-100的整数")
+            level4 = st.text_input("Level4 ≥", str(default_cutoffs['Level4']), help="请输入0-100的整数")
+            level5 = st.text_input("Level5 ≥", str(default_cutoffs['Level5']), help="请输入0-100的整数")
+            level6 = st.text_input("Level6 ≥", str(default_cutoffs['Level6']), help="请输入0-100的整数")
+            level7 = st.text_input("Level7 ≥", str(default_cutoffs['Level7']), help="请输入0-100的整数")
             
             if st.form_submit_button("✅ 应用设置"):
-                current_cutoffs = {
-                    'Level2': level2, 'Level3': level3, 'Level4': level4,
-                    'Level5': level5, 'Level6': level6, 'Level7': level7
-                }
-                st.sidebar.success("✅ 设置已应用")
-                st.rerun()
+                # 验证输入是否为有效整数
+                try:
+                    level2_int = int(level2)
+                    level3_int = int(level3)
+                    level4_int = int(level4)
+                    level5_int = int(level5)
+                    level6_int = int(level6)
+                    level7_int = int(level7)
+                    
+                    # 检查范围
+                    if not all(0 <= x <= 100 for x in [level2_int, level3_int, level4_int, level5_int, level6_int, level7_int]):
+                        st.sidebar.error("❌ 分数必须在0-100之间")
+                        current_cutoffs = default_cutoffs
+                    else:
+                        current_cutoffs = {
+                            'Level2': level2_int, 'Level3': level3_int, 'Level4': level4_int,
+                            'Level5': level5_int, 'Level6': level6_int, 'Level7': level7_int
+                        }
+                        st.sidebar.success("✅ 设置已应用")
+                        st.rerun()
+                except ValueError:
+                    st.sidebar.error("❌ 请输入有效的整数")
+                    current_cutoffs = default_cutoffs
             else:
                 current_cutoffs = default_cutoffs
     
