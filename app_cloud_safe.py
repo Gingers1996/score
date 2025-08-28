@@ -285,28 +285,88 @@ def main():
             # 等级分布
             col1, col2 = st.columns(2)
             with col1:
-                st.write("**等级分布**")
+                st.write("**🏆 等级分布**")
                 grade_counts = final_df['等级'].value_counts().sort_index()
+                
+                # 创建等级分布表格
+                grade_data = []
                 for level, count in grade_counts.items():
                     percentage = (count / len(final_df)) * 100
-                    st.write(f"{level}: {count}人 ({percentage:.1f}%)")
+                    
+                    # 根据等级添加图标
+                    if level == 'Level7':
+                        icon = "🥇"
+                    elif level == 'Level6':
+                        icon = "🥈"
+                    elif level == 'Level5':
+                        icon = "🥉"
+                    elif level == 'Level4':
+                        icon = "🏅"
+                    elif level == 'Level3':
+                        icon = "🎖️"
+                    elif level == 'Level2':
+                        icon = "📊"
+                    else:
+                        icon = "❓"
+                    
+                    grade_data.append({
+                        "等级": f"{icon} {level}",
+                        "人数": f"{count}人",
+                        "占比": f"{percentage:.1f}%"
+                    })
+                
+                # 显示等级分布表格
+                grade_df = pd.DataFrame(grade_data)
+                st.dataframe(
+                    grade_df,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "等级": st.column_config.TextColumn("等级", width="medium"),
+                        "人数": st.column_config.TextColumn("人数", width="small"),
+                        "占比": st.column_config.TextColumn("占比", width="small")
+                    }
+                )
             
             with col2:
-                st.write("**班级平均分**")
+                st.write("**🏫 班级平均分**")
                 class_avg = final_df.groupby('班级')['总分'].mean().sort_values(ascending=False)
+                
+                # 创建班级平均分表格
+                class_avg_data = []
                 for class_name, avg_score in class_avg.items():
-                    st.write(f"{class_name}: {avg_score:.1f}分")
+                    # 根据平均分添加颜色和图标
+                    if avg_score >= 80:
+                        icon = "🥇"
+                        color = "green"
+                    elif avg_score >= 70:
+                        icon = "🥈"
+                        color = "blue"
+                    elif avg_score >= 60:
+                        icon = "🥉"
+                        color = "orange"
+                    else:
+                        icon = "📊"
+                        color = "red"
+                    
+                    class_avg_data.append({
+                        "班级": f"{icon} {class_name}",
+                        "平均分": f"{avg_score:.1f}分"
+                    })
+                
+                # 显示班级平均分表格
+                class_avg_df = pd.DataFrame(class_avg_data)
+                st.dataframe(
+                    class_avg_df,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "班级": st.column_config.TextColumn("班级", width="medium"),
+                        "平均分": st.column_config.TextColumn("平均分", width="small")
+                    }
+                )
             
-            # 分数区间统计
-            st.write("**分数区间分布**")
-            bins = [0, 50, 60, 70, 80, 90, 100]
-            labels = ['<50', '50-60', '60-70', '70-80', '80-90', '90-100']
-            final_df['分数区间'] = pd.cut(final_df['总分'], bins=bins, labels=labels, include_lowest=True)
-            score_dist = final_df['分数区间'].value_counts().sort_index()
-            
-            for interval, count in score_dist.items():
-                percentage = (count / len(final_df)) * 100
-                st.write(f"{interval}: {count}人 ({percentage:.1f}%)")
+            # 移除分数区间统计
             
             # 下载结果
             st.subheader("💾 下载结果")
