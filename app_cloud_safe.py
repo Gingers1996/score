@@ -113,71 +113,73 @@ def main():
     if 'cutoffs' not in st.session_state:
         st.session_state['cutoffs'] = default_cutoffs.copy()
     
-    # 等级分数线输入（使用文本输入框，更便捷）
-    st.sidebar.caption("请设置各等级的最低分数线（≥）。Level2到Level7递增。")
-    
-    # 使用文本输入框，支持直接输入整数
-    level2_input = st.sidebar.text_input(
-        "Level2 ≥", 
-        value=str(st.session_state['cutoffs']['Level2']),
-        help="输入0-100之间的整数"
-    )
-    level3_input = st.sidebar.text_input(
-        "Level3 ≥", 
-        value=str(st.session_state['cutoffs']['Level3']),
-        help="输入0-100之间的整数"
-    )
-    level4_input = st.sidebar.text_input(
-        "Level4 ≥", 
-        value=str(st.session_state['cutoffs']['Level4']),
-        help="输入0-100之间的整数"
-    )
-    level5_input = st.sidebar.text_input(
-        "Level5 ≥", 
-        value=str(st.session_state['cutoffs']['Level5']),
-        help="输入0-100之间的整数"
-    )
-    level6_input = st.sidebar.text_input(
-        "Level6 ≥", 
-        value=str(st.session_state['cutoffs']['Level6']),
-        help="输入0-100之间的整数"
-    )
-    level7_input = st.sidebar.text_input(
-        "Level7 ≥", 
-        value=str(st.session_state['cutoffs']['Level7']),
-        help="输入0-100之间的整数"
-    )
-    
-    # 验证输入并更新session state
-    inputs = [level2_input, level3_input, level4_input, level5_input, level6_input, level7_input]
-    levels = ['Level2', 'Level3', 'Level4', 'Level5', 'Level6', 'Level7']
-    
-    # 验证所有输入
-    valid_inputs = True
-    for i, input_val in enumerate(inputs):
-        validated = validate_cutoff_input(input_val)
-        if validated is None:
-            st.sidebar.error(f"{levels[i]} 输入无效，请输入0-100之间的整数")
-            valid_inputs = False
-            break
-    
-    # 应用按钮
-    col_a, col_b = st.sidebar.columns(2)
-    with col_a:
-        if st.button("应用等级设置"):
-            if valid_inputs:
-                new_cutoffs = {}
-                for i, level in enumerate(levels):
-                    new_cutoffs[level] = validate_cutoff_input(inputs[i])
-                st.session_state['cutoffs'] = new_cutoffs
-                st.sidebar.success("等级设置已应用")
-                st.rerun()
-    
-    with col_b:
-        if st.button("恢复默认等级"):
+    # 等级分数线输入（使用表单，支持实时更新）
+    with st.sidebar.form("等级设置表单"):
+        st.caption("请设置各等级的最低分数线（≥）。Level2到Level7递增。")
+        
+        # 使用文本输入框，支持直接输入整数
+        level2_input = st.text_input(
+            "Level2 ≥", 
+            value=str(st.session_state['cutoffs']['Level2']),
+            help="输入0-100之间的整数"
+        )
+        level3_input = st.text_input(
+            "Level3 ≥", 
+            value=str(st.session_state['cutoffs']['Level3']),
+            help="输入0-100之间的整数"
+        )
+        level4_input = st.text_input(
+            "Level4 ≥", 
+            value=str(st.session_state['cutoffs']['Level4']),
+            help="输入0-100之间的整数"
+        )
+        level5_input = st.text_input(
+            "Level5 ≥", 
+            value=str(st.session_state['cutoffs']['Level5']),
+            help="输入0-100之间的整数"
+        )
+        level6_input = st.text_input(
+            "Level6 ≥", 
+            value=str(st.session_state['cutoffs']['Level6']),
+            help="输入0-100之间的整数"
+        )
+        level7_input = st.text_input(
+            "Level7 ≥", 
+            value=str(st.session_state['cutoffs']['Level7']),
+            help="输入0-100之间的整数"
+        )
+        
+        # 验证输入并更新session state
+        inputs = [level2_input, level3_input, level4_input, level5_input, level6_input, level7_input]
+        levels = ['Level2', 'Level3', 'Level4', 'Level5', 'Level6', 'Level7']
+        
+        # 验证所有输入
+        valid_inputs = True
+        for i, input_val in enumerate(inputs):
+            validated = validate_cutoff_input(input_val)
+            if validated is None:
+                st.error(f"{levels[i]} 输入无效，请输入0-100之间的整数")
+                valid_inputs = False
+                break
+        
+        # 应用按钮
+        col_a, col_b = st.columns(2)
+        with col_a:
+            apply_button = st.form_submit_button("✅ 应用等级设置")
+        with col_b:
+            reset_button = st.form_submit_button("🔄 恢复默认等级")
+        
+        # 处理表单提交
+        if apply_button and valid_inputs:
+            new_cutoffs = {}
+            for i, level in enumerate(levels):
+                new_cutoffs[level] = validate_cutoff_input(inputs[i])
+            st.session_state['cutoffs'] = new_cutoffs
+            st.success("等级设置已应用")
+        
+        if reset_button:
             st.session_state['cutoffs'] = default_cutoffs.copy()
-            st.sidebar.success("已恢复默认等级设置")
-            st.rerun()
+            st.success("已恢复默认等级设置")
     
     current_cutoffs = st.session_state['cutoffs']
     
