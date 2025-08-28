@@ -209,9 +209,11 @@ def main():
             with col4:
                 st.metric("最低分", f"{processed_df['总分'].min():.2f}")
             
-            # 使用侧边栏的等级设置进行划分
-            with st.expander("当前等级分数线（只读，侧边栏可修改）", expanded=False):
-                st.write(current_cutoffs)
+                # 使用侧边栏的等级设置进行划分
+    with st.expander("当前等级分数线（只读，侧边栏可修改）", expanded=False):
+        # 显示为整数格式
+        display_cutoffs = {k: int(v) for k, v in current_cutoffs.items()}
+        st.write(display_cutoffs)
             
             # 等级划分
             final_df = assign_grades(processed_df, current_cutoffs)
